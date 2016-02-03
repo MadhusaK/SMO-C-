@@ -108,7 +108,7 @@ takestep
     double b2 = beta - Ej - Y_data(j)*(alpha(i) - alpha_i_old)*kernel(X_data.col(i),X_data.col(j)) - Y_data(j)*(alpha(j) - alpha_j_old)*kernel(X_data.col(j), X_data.col(j));
 
     beta = (b1+b2)/2.0;
-    std::cout << beta;
+    std::cout << beta << std::endl;
 
     // Reclassify data based on new multipliers
 
@@ -151,16 +151,27 @@ epislon         =
             int j = i;
             while(j == i)
             {
+                double maxErr {0};
+                int secChoice {0};
                 // Second Choice heuristic
                 for(int k = 0; k < alpha.n_rows; k++)
                 {
+
                     if(alpha(k) > 0 && alpha(k) < cost(k))
                     {
+                        double Ek =  Y_data(k)*(f_x(alpha,X_data, X_data.col(k), Y_data, beta) - Y_data(k));
 
-                        tempSum++;
+                        if( std::abs(Ei - Ek) > maxErr)
+                        {
+                            maxErr = std::abs(Ei - Ek);
+                            secChoice = k;
+                        }
+
                     }
                 }
-                j = arma::as_scalar(arma::randi<arma::ivec>(1, arma::distr_param(0,Y_data.n_rows-1)));
+                j = secChoice;
+
+                //j = arma::as_scalar(arma::randi<arma::ivec>(1, arma::distr_param(0,Y_data.n_rows-1)));
             }
 
             if(takeStep(i, j, alpha, X_data, Y_data, beta, cost, epsilon, Y_reclass) ==1){
