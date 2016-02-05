@@ -22,7 +22,7 @@ beta            = Threshold
 
     for(int i =0; i< alpha.n_rows;i++)
     {
-        sum = sum + double(alpha(i)*Y_data(i)*kernel(X_data.col(i),X_sample) + beta);
+        sum += double(alpha(i)*Y_data(i)*kernel(X_data.col(i),X_sample) - beta);
     }
 
     return sum;
@@ -49,15 +49,15 @@ takestep
 
     // Calculate threshold bounds
     int s = Y_data(i)*Y_data(j);
-    if(s ==1)
-    {
-        L = std::max(0.0, alpha(i) + alpha(j) - cost(j));
-        H = std::min(cost(i), alpha(i) + alpha(j));
-    }
-    else
+    if( Y_data(i) != Y_data(j))
     {
         L = std::max(0.0, alpha(i) - alpha(j));
         H = std::min(cost(i), cost(j) + alpha(i) - alpha(j));
+    }
+    else
+    {
+        L = std::max(0.0, alpha(i) + alpha(j) - cost(j));
+        H = std::min(cost(i), alpha(i) + alpha(j));
     }
 
     // Compare Thresholds
@@ -74,7 +74,7 @@ takestep
 
     if(x > 0)
     {
-        alpha_new = alpha(i) + (1.0/x)*Y_data(i)*( Ej - Ei  );
+        alpha_new = alpha(i) + (Y_data(i)*( Ej - Ei)/x);
         alpha_new = std::min(std::max(alpha_new,L), H);
     }
     else if( Y_data(i)*(Ej - Ei) < 0)
@@ -128,68 +128,48 @@ beta            = Threshold
 i               = i'th sample
 epislon         =
 */
-    double tol = 0.0000001;
+    double tol = 0.0001;
     arma::Col<int> range_vector = arma::linspace<arma::Col<int>>(0, alpha.n_rows-1,alpha.n_rows);
 
-    double Ei =  Y_data(i)*(f_x(alpha,X_data, X_data.col(i), Y_data, beta) - Y_data(i));
-
+    double Ei =  (f_x(alpha,X_data, X_data.col(i), Y_data, beta) - Y_data(i));
+    double r2 = Y_data(i)*Ei;
     // First heuristic - KKT Conditions w.r.t the margins
-    if(( (Ei < -tol) && (alpha(i) < cost(i)) ) || ( (Ei > tol) && (alpha(i) > 0) ))
+    if( ((r2 < tol) && (alpha(i) < cost(i))) || ( (r2 > tol) && (alpha(i) > 0)) )
     {
-
-        // Count number of l.multipliers > 0 and less than C
-        int tempSum {0};
+        int j = -1;
+        double maxErr {0};
+        //int secChoice {0};
+        // Second Choice heuristic
         for(int k = 0; k < alpha.n_rows; k++)
         {
-            if(alpha(k) > 0 && alpha(k) < cost(k)) {
-                tempSum++;
+            if((alpha(k) > 0) && (alpha(k) < cost(k)))
+            {
+                double Ek = f_x(alpha,X_data, X_data.col(k), Y_data, beta) - Y_data(k);
+                if( std::abs(Ei - Ek) > maxErr)
+                {
+                    maxErr = std::abs(Ei - Ek);
+                    j = k;
+                }
             }
         }
-        if( tempSum > 1)
+        //j = secChoice;
+        if(j > 1)
         {
-            // Pick j != i
-            int j = i;
-            while(j == i)
-            {
-                double maxErr {0};
-                int secChoice {0};
-                // Second Choice heuristic
-                for(int k = 0; k < alpha.n_rows; k++)
-                {
-
-                    if(alpha(k) > 0 && alpha(k) < cost(k))
-                    {
-                        double Ek =  Y_data(k)*(f_x(alpha,X_data, X_data.col(k), Y_data, beta) - Y_data(k));
-
-                        if( std::abs(Ei - Ek) > maxErr)
-                        {
-                            maxErr = std::abs(Ei - Ek);
-                            secChoice = k;
-                        }
-
-                    }
-                }
-                j = secChoice;
-
-                //j = arma::as_scalar(arma::randi<arma::ivec>(1, arma::distr_param(0,Y_data.n_rows-1)));
-            }
-
             if(takeStep(i, j, alpha, X_data, Y_data, beta, cost, epsilon, Y_reclass) ==1){
                 return 1;
             }
         }
-
         // Loop over all possible a_j within the bounds
 
-        for(int j = 0; j < alpha.n_rows; j++)
+        for(int k = 0; k < alpha.n_rows; k++)
         {
             // Does it matter if entire order is random instead of looping from a random point??
             arma::Col<int> range_shuff = arma::shuffle(range_vector);
-            double k = range_vector(range_shuff(i));
+            double kk = range_vector(range_shuff(i));
 
-            if (alpha(k)> 0 && alpha(k) < cost(k))
+            if (alpha(kk)> 0 && alpha(kk) < cost(kk))
             {
-                if(takeStep(i, k, alpha, X_data, Y_data, beta, cost, epsilon, Y_reclass) == 1)
+                if(takeStep(i, kk, alpha, X_data, Y_data, beta, cost, epsilon, Y_reclass) == 1)
                 {
                     return 1;
                 }
@@ -227,18 +207,18 @@ int main()
     arma::Col<arma::sword> Y_reclass(Y_data.n_rows, arma::fill::zeros);
     arma::Col<double> alpha(Y_data.n_rows, arma::fill::zeros);
     arma::Col<double> cost(Y_data.n_rows, arma::fill::zeros);
-    cost.fill(100);
+    cost.fill(100.0);
     double beta {0};
-    double epsilon {0.000001};
+    double epsilon {0.0001};
 
     int numChanged {0};
     int examineAll {1};
 
-    while( numChanged > 0 | examineAll == 1)
+    while( numChanged > 0 || examineAll > 0)
     {
         numChanged = 0;
 
-        if(examineAll == 1)
+        if(examineAll > 0)
         {
             for(int i = 0; i< X_data.n_cols; i++)
             {
@@ -249,7 +229,7 @@ int main()
         {
             for(int i = 0; i< X_data.n_cols; i++)
             {
-                if(alpha(i) > 0 && alpha(i) < cost(i))
+                if((alpha(i) != 0) && (alpha(i) != cost(i)))
                 numChanged += examineExample(alpha, X_data, Y_data, cost, beta, i, epsilon, Y_reclass);
             }
         }
