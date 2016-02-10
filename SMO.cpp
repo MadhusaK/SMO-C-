@@ -22,9 +22,9 @@ beta            = Threshold
 
     for(int i =0; i< alpha.n_rows;i++)
     {
-        sum += double(alpha(i)*Y_data(i)*kernel(X_data.col(i),X_sample) - beta);
+        sum += double(alpha(i)*Y_data(i)*kernel(X_data.col(i),X_sample));
     }
-
+    sum -= beta;
     return sum;
 }
 

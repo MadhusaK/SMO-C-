@@ -30,7 +30,17 @@ beta            = Threshold
     return sum;
 }
 
-//takeStep
+//Heavyside function
+double H(const double& alpha)
+{
+/*
+alpha           = Lagrange multiplier
+*/
+    return ((alpha > 0) ? 1.0 : 0.0);
+}
+
+
+
 int takeStep(int i, int j, arma::Col<double>& alpha, const arma::Mat<double>& X_data, const arma::Col<arma::sword>& Y_data, double& beta, const arma::Col<double>& cost, double epsilon, arma::Col<arma::sword>& Y_reclass)
 {
 /*
@@ -44,7 +54,6 @@ cost            = Cost data
 epislon         = Tolerance for Upper Lower threshold
 Y_reclass       = Reclassified data
 */
-    arma::arma_rng::set_seed_random();
 
     // Cover edge cases
     if(i == j) {return 0;}
@@ -168,46 +177,63 @@ Y_reclass       = Reclassified data
 }
 
 //Examine Examples
-int examineExample(arma::Col<double>& alpha, const arma::Mat<double>& X_data, const arma::Col<arma::sword>& Y_data, const arma::Col<double>& cost,  double& beta, int i, double epsilon, arma::Col<arma::sword>& Y_reclass)
+int examineExample(int i,arma::Col<double>& alpha, const arma::Mat<double>& X_data, const arma::Col<arma::sword>& Y_data, const arma::Col<double>& cost,  double& beta, double epsilon, arma::Col<arma::sword>& Y_reclass)
 {
 /*
+i               = i'th sample
 alpha           = lagrange multipliers
 X_data          = Training Data
 Y_data          = Target data
 cost            = Cost data
 beta            = Threshold
-i               = i'th sample
 epislon         = Tolerance for Upper Lower threshold
 Y_reclass       = Reclassified data
 */
 
-    double tol = 0.0001;
+    //initialise second lagrange
     int j {-1};
 
-    arma::Col<int> range_vector = arma::linspace<arma::Col<int>>(0, alpha.n_rows-1,alpha.n_rows);
+    //initialise the tolerance
+    double tol = 0.0001;
 
+    //Compute the KKT conditions
+    double KKT = H(alpha(i))*std::max(0.0, Y_data(i)*f_x(alpha, X_data, X_data.col(i), Y_data, beta) - 1.0) + H(1 - alpha(i))*std::max(0.0, 1.0 - Y_data(i)*f_x(alpha, X_data, X_data.col(i), Y_data, beta));
+
+    //Compute the error for i
     double Ei = (f_x(alpha,X_data, X_data.col(i), Y_data, beta) - Y_data(i));
-    double ri = Y_data(i)*Ei;
-    // Heuristic 1
-    // KKT Tolerance at the margins
-    if(((ri < tol) && (alpha(i) < cost(i))) || ((ri > tol) && (alpha(i) > 1)))
+
+
+    if(KKT > tol)
     {
 
-        // Heuristic 2
-        // Second choice that maximises the step. This is approximated by finding the maximum error
-        double maxErr {0};
+        // Count the number of multipliers a_i > 1
+        double tot {0};
 
         for(int k = 0; k < Y_data.n_rows; k++)
         {
+            // Increment numChanged if examineExample returns true for i'th multiplier
+            if(alpha(k) > 0 && alpha(k) < cost(k)){ tot += 1;}
+        }
 
-            if((alpha(k) > 0) && (alpha(k) < cost(k)))
+        //if # of non bounded alphas > 1
+        if(tot > 1)
+        {
+            double rel_err {0};
+        // Second Choice Heuristic
+        // Select the j with the greatest relative error
+
+            for(int k = 0; k < Y_data.n_rows; k++)
             {
-                double Ek = (f_x(alpha,X_data, X_data.col(k), Y_data, beta) - Y_data(k));
-
-                if(std::abs(Ek - Ei) > maxErr)
+                // Increment numChanged if examineExample returns true for i'th multiplier
+                if(alpha(k) > 0 && alpha(k) < cost(k))
                 {
-                    maxErr = std::abs(Ek - Ei);
-                    j = k;
+                    double Ek = (f_x(alpha,X_data, X_data.col(k), Y_data, beta) - Y_data(k));
+
+                    if(std::abs(Ek - Ei) > rel_err)
+                    {
+                        rel_err = std::abs(Ek - Ei);
+                        j = k;
+                    }
                 }
             }
         }
@@ -219,7 +245,8 @@ Y_reclass       = Reclassified data
         }
 
         // Heuristic 3
-        // Look at non-bounded samples. This covers special cases where Heurisstic 2 fails to make positive progress
+        // Look at bounded samples. This covers special cases where Heurisstic 2 fails to make positive progress
+
         for(int k = 0; k < Y_data.n_rows; k++)
         {
             if((alpha(k) > 0) && (alpha(k) < cost(k)))
@@ -241,56 +268,69 @@ Y_reclass       = Reclassified data
 
     return 0;
 
-
 }
+
+
 
 
 //Main routine
 int main()
 {
+
+    arma::arma_rng::set_seed_random();
+    // Load data and respective classifications
     arma::Mat<double> X_data;
     arma::Col<arma::sword> Y_data;
 
     X_data.load("clusterData");
     Y_data.load("clusterClass");
+    arma::Col<arma::sword> Y_reclass(Y_data.n_rows, arma::fill::zeros); // Empty vector to be used to save the output of the objective function
 
-    std::cout<< "Test";
 
-
-    arma::Col<arma::sword> Y_reclass(Y_data.n_rows, arma::fill::zeros);
+    // Initialise Lagrange multipliers and cost
     arma::Col<double> alpha(Y_data.n_rows, arma::fill::zeros);
     arma::Col<double> cost(Y_data.n_rows, arma::fill::zeros);
+    cost.fill(1000.0);
 
-    cost.fill(100.0);
+    // Initialise tolerance and numerical thresholds
     double beta {0};
     double epsilon {0.0001};
 
+    // Initialise variables for classification loop
     int numChanged {0};
     int examineAll {1};
 
-    while( numChanged > 0 || examineAll > 0)
+    while(numChanged > 0 || examineAll == 1)
     {
         numChanged = 0;
 
-        if(examineAll > 0)
+        if(examineAll == 1)
         {
-            for(int i = 0; i< X_data.n_cols; i++)
+            // Cycle through all the lagrange multipliers
+            for(int i; i < Y_data.n_rows; i++)
             {
-                numChanged += examineExample(alpha, X_data, Y_data, cost, beta, i, epsilon, Y_reclass);
+                // Increment numChanged if examineExample returns true for i'th multiplier
+                numChanged += examineExample(i, alpha, X_data, Y_data, cost, beta, epsilon, Y_reclass);
             }
         }
         else
         {
-            for(int i = 0; i< X_data.n_cols; i++)
+            // Cycle through all the bounded lagrange multipliers
+            for(int i; i < Y_data.n_rows; i++)
             {
-                if((alpha(i) != 0) && (alpha(i) != cost(i)))
-                numChanged += examineExample(alpha, X_data, Y_data, cost, beta, i, epsilon, Y_reclass);
+                if(alpha(i) > 0 && alpha(i) < cost(i))
+                {
+                    // Increment numChanged if examineExample returns true for i'th multiplier
+                    numChanged += examineExample(i, alpha, X_data, Y_data, cost, beta, epsilon, Y_reclass);
+                }
             }
         }
 
-        if( examineAll == 1) { examineAll = 0; }
-        else if (numChanged == 0) { examineAll = 1; }
+        if(examineAll == 1) { examineAll = 0;}
+        else if (numChanged = 0) { examineAll = 1;}
+
     }
+        std::cout << beta << std::endl;
 
     for(int k =0 ; k < Y_data.n_rows; k++)
     {
@@ -305,6 +345,5 @@ int main()
     }
 
     Y_reclass.save("reclassData", arma::csv_ascii);
-
 }
 

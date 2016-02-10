@@ -30,6 +30,11 @@ beta            = Threshold
     return sum;
 }
 
+//Classify point
+
+
+
+
 //takeStep
 int takeStep(int i, int j, arma::Col<double>& alpha, const arma::Mat<double>& X_data, const arma::Col<arma::sword>& Y_data, double& beta, const arma::Col<double>& cost, double epsilon, arma::Col<arma::sword>& Y_reclass)
 {
@@ -254,13 +259,10 @@ int main()
     X_data.load("clusterData");
     Y_data.load("clusterClass");
 
-    std::cout<< "Test";
-
-
+    std::cout << "tesT";
     arma::Col<arma::sword> Y_reclass(Y_data.n_rows, arma::fill::zeros);
     arma::Col<double> alpha(Y_data.n_rows, arma::fill::zeros);
     arma::Col<double> cost(Y_data.n_rows, arma::fill::zeros);
-
     cost.fill(100.0);
     double beta {0};
     double epsilon {0.0001};
