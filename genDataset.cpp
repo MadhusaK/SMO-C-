@@ -88,7 +88,7 @@ int main()
 
     //Constants
     const arma::uword n_dim {2};
-    const arma::uword n_points {400};
+    const arma::uword n_points {500};
     const arma::uword range {20};
 
 

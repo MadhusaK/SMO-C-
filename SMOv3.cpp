@@ -84,7 +84,7 @@ Y_reclass       = Reclassified data
     double kjj = kernel(X_data.col(j), X_data.col(j));
     double kij = kernel(X_data.col(i), X_data.col(j));
 
-    double eta =  kii + kjj - 2.0*kij;
+    double eta =  kii + kjj + 2.0*kij;
 
     double alpha_i_new;
     double alpha_j_new;
@@ -101,8 +101,8 @@ Y_reclass       = Reclassified data
         // Compute threshold objetive functions
         double L1 = alpha(j) + s*(alpha(i) - L);
         double H1 = alpha(j) + s*(alpha(i) - H);
-        double f1 = Y_data(j)*(Ej + beta) - alpha(j)*kjj - s*alpha(i)*kij;
-        double f2 = Y_data(i)*(Ei + beta) - alpha(i)*kii - s*alpha(j)*kij;
+        double f1 = Y_data(j)*(Ej + beta) + beta - alpha(j)*kjj - s*alpha(i)*kij;
+        double f2 = Y_data(i)*(Ei + beta)+ beta - alpha(i)*kii - s*alpha(j)*kij;
 
         double L_obj =  -0.5* L1 * L1 * kjj - 0.5* L * L * kii - s * L * L1 * kij - L1 * f1 - L * f2;
         double H_obj =  -0.5* H1 * H1 * kjj - 0.5* H * H * kii - s * H * H1 * kij - H1 * f1 - H * f2;

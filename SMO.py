@@ -29,19 +29,19 @@ pyplot.figure(0)
 pyplot.hold(True)
 
 
-for i in range(np.shape(d_clusterClass)[0]):
-    if (d_clusterClass[i] == 1):
-        pyplot.plot(d_clusterData[0][i], d_clusterData[1][i], 'ro')
+for i in range(np.shape(d_conClass)[0]):
+    if (d_conClass[i] == 1):
+        pyplot.plot(d_conData[0][i], d_conData[1][i], 'ro')
     else:
-        pyplot.plot(d_clusterData[0][i], d_clusterData[1][i], 'bo')
+        pyplot.plot(d_conData[0][i], d_conData[1][i], 'bo')
 
 
 pyplot.figure(1)
 pyplot.hold(True)
 
 
-for i in range(np.shape(d_clusterClass)[0]):
+for i in range(np.shape(d_conClass)[0]):
     if (d_reclassData[i] == 1):
-        pyplot.plot(d_clusterData[0][i], d_clusterData[1][i], 'ro')
+        pyplot.plot(d_conData[0][i], d_conData[1][i], 'ro')
     else:
-        pyplot.plot(d_clusterData[0][i], d_clusterData[1][i], 'bo')
+        pyplot.plot(d_conData[0][i], d_conData[1][i], 'bo')

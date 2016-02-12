@@ -93,14 +93,14 @@ Y_reclass       = Reclassified data
     double kjj = kernel(X_data.col(j), X_data.col(j));
     double kij = kernel(X_data.col(i), X_data.col(j));
 
-    double eta =  kii + kjj - 2.0*kij;
+    double eta =  -kii - kjj + 2.0*kij;
 
     double alpha_i_new;
     double alpha_j_new;
 
     if(eta > 0)
     {
-        alpha_i_new = alpha(i) - Y_data(i)*(Ei - Ej)/eta;
+        alpha_i_new = alpha(i) - Y_data(i)*(Ej - Ei)/eta;
 
         if( alpha_i_new < L) { alpha_i_new = L;}
         else if (alpha_i_new > H) { alpha_i_new = H;}
@@ -307,7 +307,7 @@ int main()
         if(examineAll == 1)
         {
             // Cycle through all the lagrange multipliers
-            for(int i; i < Y_data.n_rows; i++)
+            for(int i =0; i < Y_data.n_rows; i++)
             {
                 // Increment numChanged if examineExample returns true for i'th multiplier
                 numChanged += examineExample(i, alpha, X_data, Y_data, cost, beta, epsilon, Y_reclass);
@@ -316,7 +316,7 @@ int main()
         else
         {
             // Cycle through all the bounded lagrange multipliers
-            for(int i; i < Y_data.n_rows; i++)
+            for(int i = 0; i < Y_data.n_rows; i++)
             {
                 if(alpha(i) > 0 && alpha(i) < cost(i))
                 {
@@ -327,7 +327,7 @@ int main()
         }
 
         if(examineAll == 1) { examineAll = 0;}
-        else if (numChanged = 0) { examineAll = 1;}
+        else if (numChanged == 0) { examineAll = 1;}
 
     }
         std::cout << beta << std::endl;
