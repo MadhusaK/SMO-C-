@@ -268,8 +268,8 @@ int main()
     arma::Mat<double> X_data;
     arma::Col<arma::sword> Y_data;
 
-    X_data.load("conData");
-    Y_data.load("conClass");
+    X_data.load("Data/conData");
+    Y_data.load("Data/conClass");
     arma::Col<arma::sword> Y_reclass(Y_data.n_rows, arma::fill::zeros);
 
     // Initialise Lagrange multipliers and cost
@@ -326,5 +326,5 @@ int main()
         }
     }
 
-    Y_reclass.save("reclassData", arma::csv_ascii);
+    Y_reclass.save("Data/reclassData", arma::csv_ascii);
 }
